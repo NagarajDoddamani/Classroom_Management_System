@@ -24,4 +24,3 @@ It provides:
 - requirements.txt : Python deps
 - .env.example : environment variables example
 - docker-compose.yml / Dockerfile : development compose
-
