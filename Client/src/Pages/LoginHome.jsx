@@ -1,44 +1,130 @@
 import React from "react";
-import { Link } from "react-router-dom";
-
+import { Link, useNavigate } from "react-router-dom";
 import googleLogo from "../assets/Google.png";
-import Userdashboard from "./Dashboard.jsx";
+
+
+// google auth imports
+import { signInWithPopup } from "firebase/auth";
+import { auth, provider } from "../Components/Login/firebase";
+
 
 function LoginPage() {
+  const [useremail, setUseremail] = React.useState("");
+  const [password, setPassword] = React.useState("");
+  
+  const navigate = useNavigate();
+
+  const handleLogin = (e) => {
+    console.log("Login data:", { useremail, password });
+    e.preventDefault();
+    // TODO: your login logic here
+    // navigate("/dashboard");
+  };
+
+  const handleGoogleLogin = async () => {
+    try {
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+
+      setUseremail(user.email);
+
+    } catch (error) {
+      console.error("Google Log-In failed:", error.message);
+    }
+  };
+
+
   return (
-    <div className="w-full min-h-screen bg-yellow-300 flex items-center justify-center p-6">
-      <div className="bg-white rounded-3xl shadow-xl p-10 w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-10">
-        
-        {/* Left Section */}
-        <div>
-          <h1 className="text-4xl font-bold mb-6">Attendance<br />Management System</h1>
-          <ul className="space-y-4 text-xl">
-            <li className="flex items-center gap-3"><span>✔</span> x</li>
-            <li className="flex items-center gap-3"><span>✔</span> y</li>
-            <li className="flex items-center gap-3"><span>✔</span> z</li>
-            <li className="flex items-center gap-3"><span>✔</span> a</li>
-          </ul>
-        </div>
+    <div className="w-full min-h-screen bg-[#f9cf57] flex items-center justify-center p-6">
+      <div className="w-full max-w-5xl bg-[#f9cf57] border-[#005b7f] rounded-xl p-6">
+        <div className="rounded-3xl shadow-xl p-10 grid grid-cols-1 md:grid-cols-[1.1fr_1fr] gap-10">
+          
+          {/* Left Section */}
+          <div className="flex flex-col justify-center">
+            <h1 className="text-4xl font-bold leading-snug mb-8">
+              Attendance <br />
+              Management System
+            </h1>
 
-        {/* Login Card */}
-        <div className="bg-white p-8 rounded-3xl shadow-lg border">
-          <h2 className="text-2xl font-bold mb-6 text-center">Login To Your Account</h2>
+            <ul className="space-y-4 text-xl">
+              {["Loram", "Loram", "Loram", "Loram"].map((item, idx) => (
+                <li key={idx} className="flex items-center gap-3">
+                  <span className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-lg">
+                    ✓
+                  </span>
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
 
-          <label className="font-semibold">Email</label>
-          <input className="w-full border rounded-lg p-3 bg-yellow-100 mb-4" placeholder="Enter Your Email" />
+          {/* Login Card */}
+          <div className="bg-white p-8 rounded-3xl shadow-lg border">
+            <h2 className="text-2xl font-bold mb-8 text-center">
+              Login To Your Account
+            </h2>
 
-          <label className="font-semibold">Password</label>
-          <input className="w-full border rounded-lg p-3 bg-yellow-100 mb-6" type="password" placeholder="*" />
+            <form onSubmit={handleLogin}>
+              <div className="mb-4">
+                <label htmlFor="email" className="block font-semibold mb-1">
+                  Email
+                </label>
+                <input
+                  id="email"
+                  type="email"
+                  className="w-full border rounded-lg p-3 bg-yellow-100 outline-none"
+                  placeholder="Enter Your Email"
+                  value={useremail}
+                  onChange={(e) => setUseremail(e.target.value)}
+                  autoComplete="off"
+                  // auto fill off for email
+                  required
+                />
 
-          <button className="w-full bg-red-600 text-white font-semibold py-3 rounded-lg mb-4">Login</button>
+              </div>
 
-          <button className="w-full bg-green-200 font-semibold py-3 rounded-lg flex items-center justify-center gap-2">
-            <span><img src={googleLogo} alt="Google" /></span> <a href={Userdashboard}>Login With Google</a>
-          </button>
+              <div className="mb-6">
+                <label htmlFor="password" className="block font-semibold mb-1">
+                  Password
+                </label>
+                <input
+                  id="password"
+                  type="password"
+                  className="w-full border rounded-lg p-3 bg-yellow-100 outline-none"
+                  placeholder="Enter Your Password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="current-password" 
+                  // for auto filling password
+                  required
+                />
+              </div>
 
-          <p className="text-sm text-center mt-4">
-            Don't Have Account <Link to="/user/sign" className="text-red-600"><span>Sign up...</span></Link>
-          </p>
+              <button
+                type="submit"
+                className="w-full bg-red-600 text-white font-semibold py-3 rounded-lg mb-4"
+                onClick={handleLogin}
+              >
+                Login
+              </button>
+            </form>
+
+            <button
+              type="button"
+              onClick={handleGoogleLogin}
+              className="w-full bg-green-200 font-semibold py-3 rounded-lg flex items-center justify-center gap-2"
+            >
+              <img src={googleLogo} alt="Google" className="w-6 h-6" />
+              <span>Login With Google</span>
+            </button>
+
+            <p className="text-xs text-center mt-4">
+              Don't Have Account{" "}
+              <Link to="/user/sign" className="text-red-600 font-semibold">
+                Sing up...
+              </Link>
+            </p>
+          </div>
         </div>
       </div>
     </div>
@@ -46,6 +132,3 @@ function LoginPage() {
 }
 
 export default LoginPage;
-
-
-

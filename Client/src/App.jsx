@@ -1,19 +1,14 @@
 import React from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 
-// Pages
-import LoginHome from "./Pages/LoginHome";
-import SignUp from "./Pages/SignUp";
+import LoginPage from "./Pages/LoginHome.jsx";
+import SignUp from "./Pages/SignUp.jsx";
 
 export default function App() {
   return (
-    <Router>
-      <Routes>
-        <Route path="/" element={<LoginHome />} />
-        <Route path="/user/sign" element={<SignUp />} />
-      </Routes>
-    </Router>
+    <Routes>
+      <Route path="/" element={<LoginPage />} />
+      <Route path="/user/sign" element={<SignUp />} />
+    </Routes>
   );
 }
-
-export { App };
