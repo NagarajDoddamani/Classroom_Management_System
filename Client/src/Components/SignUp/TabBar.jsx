@@ -5,7 +5,7 @@ export default function TabBar({ step }) {
     <div className="w-[280px] bg-[#d9efff] rounded-3xl shadow-xl p-6 flex flex-col gap-10 border border-blue-300">
 
       {/* Personal Info */}
-      <div className="flex flex-col items-center">
+      <div className={`flex flex-col items-center ${step === 1 ? "opacity-100" : "opacity-70"}`}>
         <div
           className={`w-[110px] h-[110px] rounded-full flex items-center justify-center border-4 ${
             step === 1 ? "border-green-500" : "border-gray-400"
@@ -20,8 +20,12 @@ export default function TabBar({ step }) {
       </div>
 
       {/* Face ID */}
-      <div className="flex flex-col items-center opacity-70">
-        <div className="w-[110px] h-[110px] rounded-full bg-white shadow border-4 border-gray-400 flex items-center justify-center">
+      <div className={`flex flex-col items-center ${step === 2 ? "opacity-100" : "opacity-70"}`}>
+        <div
+          className={`w-[110px] h-[110px] rounded-full flex items-center justify-center border-4 ${
+            step === 2 ? "border-green-500" : "border-gray-400"
+          } bg-white shadow`}
+        >
           <img
             src="https://cdn-icons-png.flaticon.com/512/2922/2922510.png"
             className="w-16"
