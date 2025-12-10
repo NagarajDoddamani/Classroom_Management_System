@@ -15,19 +15,48 @@ export default function SignUp() {
   const [userpassword, setUserpassword] = React.useState("");
   const [userConfirmpassword, setUserConfirmpassword] = React.useState("");
 
-  const handelstep2 = () => {
+  const API_BASE = "http://localhost:8000";
+
+  const handelstep2 = async () => {
+    // check all fields are filled
     if (!UserName || !useremail || !userpassword || !userConfirmpassword) {
       alert("Please fill in all fields.");
       return;
     }
+    // check password match
     if (userpassword !== userConfirmpassword) {
       alert("Passwords do not match!");
       return;
     }
 
-    navigate("/user/sign/face", {
-      state: { UserName, useremail, userpassword },
-    });
+    try {
+      // 2. Check if user already exists (by email)
+      const res = await fetch(
+        `${API_BASE}/check-user?email=${encodeURIComponent(useremail)}`
+      );
+
+      if (!res.ok) {
+        alert("Server error while checking user. Try again.");
+        return;
+      }
+
+      const data = await res.json();
+
+      if (data.exists) {
+        // 3. If user exists → alert + go to login page
+        alert("Account already exists with this email. Please login.");
+        navigate("/"); // or "/login" if that’s your login route
+        return;
+      }
+
+      // 4. If not exists → go to face signup step
+      navigate("/user/sign/face", {
+        state: { UserName, useremail, userpassword },
+      });
+    } catch (err) {
+      console.error(err);
+      alert("Could not connect to server. Check backend is running.");
+    }
   };
 
   const handelGoogleSignin = async () => {

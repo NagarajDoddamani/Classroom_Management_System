@@ -2,6 +2,8 @@ from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List
+from fastapi import APIRouter
+import bcrypt
 import face_recognition
 import numpy as np
 import base64
@@ -12,6 +14,8 @@ import os
 from datetime import datetime
 from PIL import Image
 import io
+from fastapi import Query
+
 
 # ---------------------------
 # ENV + DB SETUP
@@ -54,7 +58,10 @@ class UserFaceModel(BaseModel):
     password: str       # plain for now (you can hash later)
     face_id: List[List[float]]
 
-
+# for login verification
+class LoginRequest(BaseModel):
+    email: str
+    password: str
 
 # ---------------------------
 # Health check
@@ -98,6 +105,38 @@ async def generate_face_id(file: UploadFile = File(...)):
         print("ERROR:", e)
         return {"success": False, "message": str(e)}
 
+# check email alredy exists
+@app.get("/check-user")
+async def check_user(email: str = Query(...)):
+    """Return exists: true/false for given email."""
+    user = users_col.find_one({"email": email})
+    return {"exists": user is not None}
+
+# login verification
+@app.post("/login")
+async def login(data: LoginRequest):
+    email = data.email
+    password = data.password
+
+    user = users_col.find_one({"email": email})
+    if not user:
+        return {"success": False, "message": "User not found"}
+
+    # if you’re still using plain text (for now):
+    if user["password"] != password:
+        return {"success": False, "message": "Incorrect password"}
+    # # compare hashed password with bcrypt
+    # if not bcrypt.checkpw(password.encode("utf-8"), user["password_hash"].encode("utf-8")):
+    #     return {"success": False, "message": "Incorrect password"}
+
+    return {
+        "success": True,
+        "message": "Login successful",
+        "user": {
+            "name": user["name"],
+            "email": user["email"]
+        }
+    }
 
 # ---------------------------
 # Save Face ID + user to DB

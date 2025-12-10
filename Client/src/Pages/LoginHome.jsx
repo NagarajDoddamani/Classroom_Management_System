@@ -14,11 +14,40 @@ function LoginPage() {
   
   const navigate = useNavigate();
 
-  const handleLogin = (e) => {
-    console.log("Login data:", { useremail, password });
+  const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
+
+  const handleLogin = async (e) => {
     e.preventDefault();
-    // TODO: your login logic here
-    // navigate("/dashboard");
+
+    if (!useremail || !password) {
+      alert("Please fill all fields.");
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: useremail,
+          password: password,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!data.success) {
+        alert(data.message);
+        return;
+      }
+
+      alert("Login Successful!");
+      navigate("/dashboard");
+
+    } catch (err) {
+      console.error(err);
+      alert("Server error while trying to log in.");
+    }
   };
 
   const handleGoogleLogin = async () => {
@@ -103,7 +132,6 @@ function LoginPage() {
               <button
                 type="submit"
                 className="w-full bg-red-600 text-white font-semibold py-3 rounded-lg mb-4"
-                onClick={handleLogin}
               >
                 Login
               </button>
