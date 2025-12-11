@@ -112,29 +112,42 @@ async def check_user(email: str = Query(...)):
     user = users_col.find_one({"email": email})
     return {"exists": user is not None}
 
-# login verification
+# ---------- Login ----------
 @app.post("/login")
 async def login(data: LoginRequest):
-    email = data.email
+    email = data.email.strip().lower()
     password = data.password
 
     user = users_col.find_one({"email": email})
     if not user:
         return {"success": False, "message": "User not found"}
 
-    # if you’re still using plain text (for now):
-    if user["password"] != password:
-        return {"success": False, "message": "Incorrect password"}
-    # # compare hashed password with bcrypt
-    # if not bcrypt.checkpw(password.encode("utf-8"), user["password_hash"].encode("utf-8")):
-    #     return {"success": False, "message": "Incorrect password"}
+    # Prefer password_hash field (bcrypt). If older plain 'password' exists, support it temporarily.
+    stored_hash = user.get("password_hash") or user.get("password")
 
+    if not stored_hash:
+        return {"success": False, "message": "No password stored for this user"}
+
+    # If stored_hash looks like bcrypt (starts with $2b$ or $2a$ or $2y$), verify
+    try:
+        if stored_hash.startswith("$2"):
+            ok = bcrypt.checkpw(password.encode("utf-8"), stored_hash.encode("utf-8"))
+        else:
+            # fallback plaintext compare (temporary)
+            ok = (stored_hash == password)
+    except Exception as e:
+        return {"success": False, "message": "Server error"}
+
+    if not ok:
+        return {"success": False, "message": "Incorrect password"}
+
+    # Successful login
     return {
         "success": True,
         "message": "Login successful",
         "user": {
-            "name": user["name"],
-            "email": user["email"]
+            "name": user.get("name"),
+            "email": user.get("email")
         }
     }
 
@@ -168,3 +181,53 @@ async def save_face_id(data: UserFaceModel):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+
+# # main.py
+# from fastapi import FastAPI, HTTPException
+# from fastapi.middleware.cors import CORSMiddleware
+# from pydantic import BaseModel
+# from pymongo import MongoClient
+# from dotenv import load_dotenv
+# import os
+# import bcrypt
+# from datetime import datetime
+
+# load_dotenv()
+
+# MONGO_URI = os.getenv("MONGO_URI")
+# DB_NAME = os.getenv("DB_NAME", "classroom_db")
+
+# if not MONGO_URI:
+#     raise RuntimeError("MONGO_URI missing in .env")
+
+# client = MongoClient(MONGO_URI)
+# db = client[DB_NAME]
+# users_col = db["users"]
+
+# app = FastAPI()
+# app.add_middleware(
+#     CORSMiddleware,
+#     allow_origins=["*"],    # lock this down in production
+#     allow_methods=["*"],
+#     allow_headers=["*"],
+# )
+
+# # ---------- Request models ----------
+# class LoginRequest(BaseModel):
+#     email: str
+#     password: str
+
+# class CheckUserResponse(BaseModel):
+#     exists: bool
+
+# # ---------- Health ----------
+# @app.get("/health")
+# async def health():
+#     return {"status": "ok", "time": datetime.utcnow().isoformat()}
+
+# # ---------- Check user exists (used by signup step) ----------
+# @app.get("/check-user")
+# async def check_user(email: str):
+#     user = users_col.find_one({"email": email})
+#     return {"exists": user is not None}
+

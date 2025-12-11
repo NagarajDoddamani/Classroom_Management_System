@@ -41,8 +41,11 @@ function LoginPage() {
         return;
       }
 
+      // Save user object for later pages
+      localStorage.setItem("user", JSON.stringify(data.user));
+
       alert("Login Successful!");
-      navigate("/dashboard");
+      navigate("/user/dashboard");
 
     } catch (err) {
       console.error(err);
