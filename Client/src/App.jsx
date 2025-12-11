@@ -5,6 +5,9 @@ import LoginPage from "./Pages/LoginHome.jsx";
 import SignUp from "./Pages/SignUp.jsx";
 import SignWithFace from "./Pages/SignWithFace.jsx";
 import Dashboard from "./Pages/Dashboard.jsx";
+import JoinCreateClassroom from "./Pages/join_create_classroom.jsx";
+import CreateClassroom from "./Pages/CreateClassroom.jsx";
+import JoinClassroom from "./Pages/JoinClassroom.jsx";
 
 export default function App() {
   return (
@@ -13,6 +16,9 @@ export default function App() {
       <Route path="/user/sign" element={<SignUp />} />
       <Route path="/user/sign/face" element={<SignWithFace />} />
       <Route path="/user/dashboard" element={<Dashboard />} />
+      <Route path="/user/class/join-create" element={<JoinCreateClassroom />} />
+      <Route path="/user/class/createClassroom" element={<CreateClassroom />} />
+      <Route path="/user/class/joinClassroom" element={<JoinClassroom />} />
     </Routes>
   );
 }
