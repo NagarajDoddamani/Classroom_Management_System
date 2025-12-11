@@ -1,5 +1,5 @@
 // Client/src/context/AuthProvider.jsx
-import React, { createContext, useState, useEffect, useCallback } from "react";
+import React, { createContext, useState, useEffect, useCallback, useContext } from "react";
 import { API_BASE, authFetch } from "../utils/api";
 
 export const AuthContext = createContext();
@@ -85,4 +85,9 @@ export function AuthProvider({ children }) {
       {children}
     </AuthContext.Provider>
   );
+}
+
+// convenience hook for consumers
+export function useAuth() {
+  return useContext(AuthContext);
 }

@@ -167,6 +167,8 @@ export default function Dashboard() {
           onClick={() => {
             // open modal for creating and joining class
             console.log("Open Create/Join Class Modal");
+            navigate("/user/class/join-create");
+            // The path for page that used for create or join calssroom
           }}
         >
           +
