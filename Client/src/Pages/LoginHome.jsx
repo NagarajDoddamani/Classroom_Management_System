@@ -41,17 +41,21 @@ function LoginPage() {
         return;
       }
 
-      // Save user object for later pages
-      localStorage.setItem("user", JSON.stringify(data.user));
+      // Save token for verifying user later
+      sessionStorage.setItem("token", data.token);
+
+      // Optionally store user for immediate display
+      sessionStorage.setItem("user", JSON.stringify(data.user));
 
       alert("Login Successful!");
-      navigate("/user/dashboard");
 
+      navigate("/user/dashboard");
     } catch (err) {
       console.error(err);
       alert("Server error while trying to log in.");
     }
   };
+
 
   const handleGoogleLogin = async () => {
     try {

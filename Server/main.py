@@ -1,7 +1,9 @@
 from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi import Header
 from pydantic import BaseModel
 from typing import List
+from datetime import timedelta
 from fastapi import APIRouter
 import bcrypt
 import face_recognition
@@ -15,6 +17,7 @@ from datetime import datetime
 from PIL import Image
 import io
 from fastapi import Query
+import jwt
 
 
 # ---------------------------
@@ -24,6 +27,7 @@ load_dotenv()
 
 MONGO_URI = os.getenv("MONGO_URI")
 DB_NAME = os.getenv("DB_NAME", "ClassRoom_DB")
+JWT_SECRET = os.getenv("JWT_SECRET", "change_this")
 
 if not MONGO_URI:
     raise RuntimeError("MONGO_URI not found in .env")
@@ -63,12 +67,22 @@ class LoginRequest(BaseModel):
     email: str
     password: str
 
+# ---------- Helpers ----------
+def create_token(email: str, expires_hours: int = 8):
+    payload = {"sub": email, "exp": datetime.utcnow() + timedelta(hours=expires_hours)}
+    token = jwt.encode(payload, JWT_SECRET, algorithm="HS256")
+    return token
+
+def decode_token(token: str):
+    return jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
+
+
 # ---------------------------
 # Health check
 # ---------------------------
 @app.get("/health")
 async def health_check():
-    return {"status": "ok"}
+    return {"status": "My health is Fucking"}
 
 @app.get("/")
 async def root():
@@ -112,7 +126,7 @@ async def check_user(email: str = Query(...)):
     user = users_col.find_one({"email": email})
     return {"exists": user is not None}
 
-# ---------- Login ----------
+# ---------- Login (returns token + user minimal info) ----------
 @app.post("/login")
 async def login(data: LoginRequest):
     email = data.email.strip().lower()
@@ -122,34 +136,47 @@ async def login(data: LoginRequest):
     if not user:
         return {"success": False, "message": "User not found"}
 
-    # Prefer password_hash field (bcrypt). If older plain 'password' exists, support it temporarily.
-    stored_hash = user.get("password_hash") or user.get("password")
-
-    if not stored_hash:
-        return {"success": False, "message": "No password stored for this user"}
-
-    # If stored_hash looks like bcrypt (starts with $2b$ or $2a$ or $2y$), verify
+    stored_hash = user.get("password_hash") or user.get("password", "")
+    # if bcrypt hash:
     try:
         if stored_hash.startswith("$2"):
             ok = bcrypt.checkpw(password.encode("utf-8"), stored_hash.encode("utf-8"))
         else:
-            # fallback plaintext compare (temporary)
             ok = (stored_hash == password)
-    except Exception as e:
+    except Exception:
         return {"success": False, "message": "Server error"}
 
     if not ok:
         return {"success": False, "message": "Incorrect password"}
 
-    # Successful login
+    token = create_token(email)
     return {
         "success": True,
         "message": "Login successful",
-        "user": {
-            "name": user.get("name"),
-            "email": user.get("email")
-        }
+        "token": token,
+        "user": {"name": user.get("name"), "email": user.get("email")}
     }
+
+# ---------- Protected /me endpoint ----------
+@app.get("/me")
+async def me(authorization: str = Header(None)):
+    if not authorization:
+        raise HTTPException(status_code=401, detail="Missing Authorization header")
+    try:
+        scheme, token = authorization.split()
+        if scheme.lower() != "bearer":
+            raise Exception("Bad scheme")
+        payload = decode_token(token)
+        email = payload.get("sub")
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    user = users_col.find_one({"email": email}, {"password_hash": 0, "password": 0})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    user["_id"] = str(user["_id"])
+    return {"user": user}
+
 
 # ---------------------------
 # Save Face ID + user to DB
@@ -175,6 +202,49 @@ async def save_face_id(data: UserFaceModel):
 
     users_col.insert_one(user_doc)
     return {"status": "saved"}
+
+
+# get the class data
+@app.get("/classes/my")
+async def get_my_classes(authorization: str = Header(None)):
+    if not authorization:
+        raise HTTPException(401, "Missing token")
+    
+    try:
+        scheme, token = authorization.split()
+        payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
+        email = payload["sub"]
+    except:
+        raise HTTPException(401, "Invalid token")
+
+    user = users_col.find_one({"email": email})
+    if not user:
+        raise HTTPException(404, "User not found")
+
+    # classroom IDs
+    joined = user.get("joinedClassrooms", [])
+    created = user.get("createdClassrooms", [])
+
+    # fetch classrooms
+    joined_classes = list(db.classrooms.find(
+        {"_id": {"$in": joined}}, {"students": 0}
+    ))
+
+    created_classes = list(db.classrooms.find(
+        {"_id": {"$in": created}}, {"students": 0}
+    ))
+
+    # convert _id
+    for c in joined_classes:
+        c["_id"] = str(c["_id"])
+    for c in created_classes:
+        c["_id"] = str(c["_id"])
+
+    return {
+        "joined": joined_classes,
+        "created": created_classes
+    }
+
 # ---------------------------
 # dev server entrypoint
 # ---------------------------
