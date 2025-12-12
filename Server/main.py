@@ -99,17 +99,19 @@ async def create_classroom(
 ):
     try:
         print("DEBUG /class/create - received payload:", data.dict())
-        # Auth header present?
+
         if not authorization:
             return {"success": False, "message": "Missing Authorization header"}
 
-        # Validate token
+        # Validate token - expect "Bearer <token>"
         try:
             scheme, token = authorization.split()
             if scheme.lower() != "bearer":
-                raise Exception("Bad scheme")
+                return {"success": False, "message": "Invalid auth scheme"}
             payload = decode_token(token)
             email = payload.get("sub")
+            if not email:
+                return {"success": False, "message": "Invalid token payload"}
         except Exception as e:
             print("DEBUG token error:", e)
             return {"success": False, "message": "Invalid token"}
@@ -124,7 +126,6 @@ async def create_classroom(
             min_att = int(data.minAttendance)
         except Exception:
             try:
-                # if provided as float string
                 min_att = int(float(data.minAttendance))
             except Exception:
                 min_att = 0
@@ -155,15 +156,13 @@ async def create_classroom(
         classroom_id = result.inserted_id
         classroom_doc["_id"] = str(classroom_id)
 
-        # push string id into user.createdClassrooms
-        users_col.update_one({"email": email}, {"$push": {"createdClassrooms": str(classroom_id)}})
+        # push string id into user.createdClassrooms (use addToSet if you want dedupe)
+        users_col.update_one({"email": email}, {"$addToSet": {"createdClassrooms": str(classroom_id)}})
 
         print("DEBUG /class/create - created:", classroom_doc)
         return {"success": True, "message": "Classroom created successfully", "classroom": classroom_doc}
 
-    except Exception as e:
-        # Always return JSON on unexpected errors and log server side
-        import traceback
+    except Exception:
         traceback.print_exc()
         return {"success": False, "message": "Internal server error"}
 
