@@ -44,8 +44,8 @@ export default function CreateClassroom() {
         teacherName: (teacherName.trim() || user?.name || "").trim(),
         department: department.trim(),
         section: section.trim(),
-        semester: Number(semester),
-        minAttendance: Number(minAttendance || 0)
+        semester: String(semester),
+        minAttendance: String(minAttendance || 75) // default to 75 if empty
       };
 
       // quick client-side validation for numbers
