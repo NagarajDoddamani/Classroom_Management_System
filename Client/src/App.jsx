@@ -8,6 +8,8 @@ import Dashboard from "./Pages/Dashboard.jsx";
 import JoinCreateClassroom from "./Pages/join_create_classroom.jsx";
 import CreateClassroom from "./Pages/CreateClassroom.jsx";
 import JoinClassroom from "./Pages/JoinClassroom.jsx";
+import TeacherDashboard from "./Pages/TeacherDashboard.jsx";
+import StudentDashboard from "./Pages/StudentDashboard.jsx";
 
 export default function App() {
   return (
@@ -19,6 +21,10 @@ export default function App() {
       <Route path="/user/class/join-create" element={<JoinCreateClassroom />} />
       <Route path="/user/class/createClassroom" element={<CreateClassroom />} />
       <Route path="/user/class/joinClassroom" element={<JoinClassroom />} />
+      
+      {/* each classroom has diffrent id so :id regular path:id of the class */}
+      <Route path="/teacher/class/:id" element={<TeacherDashboard />} />
+      <Route path="/student/class/:id" element={<StudentDashboard />} />
     </Routes>
   );
 }
