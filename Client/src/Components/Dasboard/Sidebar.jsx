@@ -2,7 +2,7 @@ import React from "react";
 import { useAuth } from "../../context/AuthProvider";
 import { useNavigate } from "react-router-dom";
 
-export default function Sidebar({ profileImage, name, email }) {
+export default function Sidebar({ profileImage, name, email, usn }) {
   const { logout } = useAuth();
   const navigate = useNavigate();
 
@@ -26,6 +26,9 @@ export default function Sidebar({ profileImage, name, email }) {
 
       {/* Email */}
       <p className="text-sm mt-1">{email}</p>
+      
+      {/* USN */}
+      <p className="text-sm mt-1">{usn || "No USN"}</p>
 
       {/* Logout Button */}
       <button
@@ -37,3 +40,4 @@ export default function Sidebar({ profileImage, name, email }) {
     </div>
   );
 }
+
