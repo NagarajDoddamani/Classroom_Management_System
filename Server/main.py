@@ -22,7 +22,7 @@ import random, string
 from fastapi import Body
 from bson import ObjectId
 import traceback
-
+from fastapi import Path
 
 # ---------------------------
 # ENV + DB SETUP
@@ -41,6 +41,9 @@ client = MongoClient(MONGO_URI)
 db = client[DB_NAME]
 users_col = db["users"]
 classrooms_col = db["classrooms"]
+# Attendance sesstion data
+attendance_col = db["attendance"] 
+
 
 # ---------------------------
 # FASTAPI APP + CORS
@@ -62,11 +65,197 @@ app.add_middleware(
 class ImagePayload(BaseModel):
     image_base64: str
 
+# teacher can add the notification of class any updates
+class PublishNoticeRequest(BaseModel):
+    notice: str
+
+def _iso_date(dt):
+    # returns YYYY-MM-DD string for date-only comparisons
+    return dt.strftime("%Y-%m-%d")
+
 class UserFaceModel(BaseModel):
     name: str
     email: str
     password: str       # plain for now (you can hash later)
+    usn: str
     face_id: List[List[float]]
+
+# GET /class/{class_id}  -> returns classroom meta (for teacher/student)
+@app.get("/class/{class_id}")
+async def get_classroom_for_frontend(class_id: str, authorization: str = Header(None)):
+    if not authorization:
+        return {"success": False, "message": "Missing Authorization header"}
+
+    try:
+        scheme, token = authorization.split()
+        if scheme.lower() != "bearer":
+            return {"success": False, "message": "Bad auth scheme"}
+        payload = decode_token(token)
+        email = payload.get("sub")
+        if not email:
+            return {"success": False, "message": "Invalid token"}
+    except Exception as e:
+        return {"success": False, "message": "Invalid token"}
+
+    try:
+        # fetch classroom
+        classroom = classrooms_col.find_one({"_id": ObjectId(class_id)})
+        if not classroom:
+            return {"success": False, "message": "Classroom not found"}
+
+        # convert ObjectId fields for safe JSON
+        classroom["_id"] = str(classroom["_id"])
+        # if students array contains ObjectIds convert them to strings
+        if isinstance(classroom.get("students"), list):
+            classroom["students"] = [str(s) for s in classroom["students"]]
+
+        # include notice as-is (if stored)
+        # We keep the same shape your frontend uses: classroom.minAttendance etc.
+        return {"success": True, "classroom": classroom}
+
+    except Exception:
+        import traceback
+        traceback.print_exc()
+        return {"success": False, "message": "Internal server error"}
+
+# GET /class/{class_id}/attendance/today -> returns attendance array for today
+@app.get("/class/{class_id}/attendance/today")
+async def get_todays_attendance(class_id: str, authorization: str = Header(None)):
+    if not authorization:
+        return {"success": False, "message": "Missing Authorization header"}
+
+    try:
+        scheme, token = authorization.split()
+        if scheme.lower() != "bearer":
+            return {"success": False, "message": "Bad auth scheme"}
+        payload = decode_token(token)
+        email = payload.get("sub")
+        if not email:
+            return {"success": False, "message": "Invalid token"}
+    except Exception as e:
+        return {"success": False, "message": "Invalid token"}
+
+    try:
+        # normalize date key (we expect attendance sessions to store "date": "YYYY-MM-DD")
+        today_key = _iso_date(datetime.utcnow())
+
+        # find attendance doc for class_id + date
+        att_doc = attendance_col.find_one({
+            "class_id": ObjectId(class_id),
+            "date": today_key
+        })
+
+        if not att_doc:
+            # not found → return empty attendance array
+            return {"success": True, "attendance": []}
+
+        # expected att_doc shape:
+        # {
+        #   _id, class_id, date, present: [{student_id:ObjectId, usn, name, timestamp}], absent: [...]
+        # }
+        # We'll merge present + absent into one array with status flag for frontend convenience.
+        attendance_list = []
+
+        for p in att_doc.get("present", []):
+            attendance_list.append({
+                "student_id": str(p.get("student_id")) if p.get("student_id") else None,
+                "usn": p.get("usn"),
+                "name": p.get("name"),
+                "status": "present",
+                "timestamp": p.get("timestamp")  # should be ISO string or datetime
+            })
+
+        for a in att_doc.get("absent", []):
+            attendance_list.append({
+                "student_id": str(a.get("student_id")) if a.get("student_id") else None,
+                "usn": a.get("usn"),
+                "name": a.get("name"),
+                "status": "absent",
+                "timestamp": a.get("timestamp")
+            })
+
+        return {"success": True, "attendance": attendance_list}
+
+    except Exception:
+        import traceback
+        traceback.print_exc()
+        return {"success": False, "message": "Internal server error"}
+
+# teacre post an notice for class (teacher)
+# POST /class/{class_id}/notice -> teacher publishes a notice to classroom
+@app.post("/class/{class_id}/notice")
+async def publish_notice(class_id: str, payload: dict = Body(...), authorization: str = Header(None)):
+    """
+    payload expected: { "notice": "text to publish" }
+    """
+    if not authorization:
+        return {"success": False, "message": "Missing Authorization header"}
+
+    try:
+        scheme, token = authorization.split()
+        if scheme.lower() != "bearer":
+            return {"success": False, "message": "Bad auth scheme"}
+        token_payload = decode_token(token)
+        email = token_payload.get("sub")
+        if not email:
+            return {"success": False, "message": "Invalid token"}
+    except Exception as e:
+        return {"success": False, "message": "Invalid token"}
+
+    try:
+        user = users_col.find_one({"email": email})
+        if not user:
+            return {"success": False, "message": "User not found"}
+
+        notice_text = (payload.get("notice") or "").strip()
+        if not notice_text:
+            return {"success": False, "message": "Empty notice"}
+
+        notice_obj = {
+            "notice": notice_text,
+            "publishedAt": datetime.utcnow(),
+            "publishedBy": str(user["_id"]),
+            "publishedByName": user.get("name")
+        }
+
+        # store notice into classroom doc (overwrite latest notice)
+        classrooms_col.update_one(
+            {"_id": ObjectId(class_id)},
+            {"$set": {"notice": notice_obj}}
+        )
+
+        # return the saved notice (converted)
+        # re-fetch classroom to return updated notice if you want
+        return {"success": True, "notice": notice_obj}
+
+    except Exception:
+        import traceback
+        traceback.print_exc()
+        return {"success": False, "message": "Internal server error"}
+    
+# create the user account with face and basic data
+@app.post("/save-face-id")
+async def save_face_id(data: UserFaceModel):
+    # check duplicate email
+    if users_col.find_one({"email": data.email}):
+        raise HTTPException(status_code=400, detail="Email already registered")
+
+    user_doc = {
+        "name": data.name,
+        "email": data.email,
+        "password": data.password,          # TODO: replace with hash later
+        "usn": data.usn,
+        "face_id": {
+            "embeddings": data.face_id,     # <--- IMPORTANT
+            "enrolledAt": datetime.utcnow(),
+        },
+        "joinedClassrooms": [],
+        "createdClassrooms": [],
+        "createdAt": datetime.utcnow(),
+    }
+
+    users_col.insert_one(user_doc)
+    return {"status": "saved"}
 
 # for login verification
 class LoginRequest(BaseModel):
@@ -276,33 +465,6 @@ async def me(authorization: str = Header(None)):
     user["_id"] = str(user["_id"])
     return {"user": user}
 
-
-# ---------------------------
-# Save Face ID + user to DB
-# ---------------------------
-@app.post("/save-face-id")
-async def save_face_id(data: UserFaceModel):
-    # check duplicate email
-    if users_col.find_one({"email": data.email}):
-        raise HTTPException(status_code=400, detail="Email already registered")
-
-    user_doc = {
-        "name": data.name,
-        "email": data.email,
-        "password": data.password,          # TODO: replace with hash later
-        "face_id": {
-            "embeddings": data.face_id,     # <--- IMPORTANT
-            "enrolledAt": datetime.utcnow(),
-        },
-        "joinedClassrooms": [],
-        "createdClassrooms": [],
-        "createdAt": datetime.utcnow(),
-    }
-
-    users_col.insert_one(user_doc)
-    return {"status": "saved"}
-
-
 # get the class data
 @app.get("/classes/my")
 async def get_my_classes(authorization: str = Header(None)):
@@ -424,6 +586,42 @@ async def join_classroom(data: JoinClassRequest, authorization: str = Header(Non
         traceback.print_exc()
         return {"success": False, "message": "Internal server error"}
     
+# the user as student, classroom data code
+@app.get("/class/{class_id}")
+async def get_classroom(class_id: str, authorization: str = Header(None)):
+    if not authorization:
+        raise HTTPException(401, "Missing token")
+
+    try:
+        scheme, token = authorization.split()
+        payload = decode_token(token)
+        email = payload["sub"]
+    except:
+        raise HTTPException(401, "Invalid token")
+
+    user = users_col.find_one({"email": email})
+    if not user:
+        raise HTTPException(404, "User not found")
+
+    classroom = classrooms_col.find_one({"_id": ObjectId(class_id)})
+    if not classroom:
+        raise HTTPException(404, "Classroom not found")
+
+    # convert id
+    classroom["_id"] = str(classroom["_id"])
+
+    # example: compute student's attendance
+    attendance = attendance_col.find_one({
+        "student_id": user["_id"],
+        "class_id": ObjectId(class_id)
+    }) or {"percentage": 0}
+
+    return {
+        "success": True,
+        "classroom": classroom,
+        "attendance": attendance
+    }
+
 # ---------------------------
 # dev server entrypoint
 # ---------------------------
