@@ -474,6 +474,8 @@ class CreateClassRequest(BaseModel):
     section: str
     semester: str  # accept string here, we'll coerce
     minAttendance: str  # accept string here, we'll coerce
+    collegeName: str   # needed for report genration
+    courseCode: str         # report gen
 
 # for joining the classroom
 class JoinClassRequest(BaseModel):
@@ -538,7 +540,9 @@ async def create_classroom(
             "section": data.section,
             "semester": sem,
             "minAttendance": min_att,
-            "classCode": class_code,
+            "collegeName": data.collegeName,    
+            "courseCode": data.courseCode,     # diffrent from class code (creater) 
+            "classCode": class_code,           # this is system genarated
             "createdBy": str(user["_id"]),
             "students": [],
             "createdAt": datetime.utcnow()
