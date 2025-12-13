@@ -85,7 +85,8 @@ export default function JoinClassroom() {
   const sidebarData = {
     profileImage: user?.profileImage || "https://cdn-icons-png.flaticon.com/512/149/149071.png",
     name: user?.name || "Unknown User",
-    email: user?.email || "No Email Found"
+    email: user?.email || "No Email Found",
+    usn: user.usn || "No USN Found",
   };
 
   return (
@@ -96,6 +97,7 @@ export default function JoinClassroom() {
         profileImage={sidebarData.profileImage}
         name={sidebarData.name}
         email={sidebarData.email}
+        usn={sidebarData.usn}
       />
 
       {/* RIGHT CONTENT */}
@@ -132,12 +134,6 @@ export default function JoinClassroom() {
                 className="bg-gray-200 hover:bg-gray-300 px-6 py-2 text-lg rounded-2xl"
               >
                 ← Back to Dashboard
-              </button>
-              <button
-                onClick={() => navigate(`/class/${joinedClass._id}`)}
-                className="bg-blue-600 text-white px-6 py-2 rounded-2xl"
-              >
-                View Classroom
               </button>
             </div>
           </div>

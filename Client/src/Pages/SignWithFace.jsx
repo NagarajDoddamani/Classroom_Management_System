@@ -11,6 +11,7 @@ export default function SignWithFace() {
   const username = state?.UserName;
   const email = state?.useremail;
   const password = state?.userpassword;
+  const usn = state?.userusn;
 
   const [photos, setPhotos] = useState([null, null, null]);
   const [encodings, setEncodings] = useState([]);
@@ -187,6 +188,7 @@ export default function SignWithFace() {
       name: username,
       email: email,
       password: password,
+      usn: usn,
       face_id: encodings,
     };
 

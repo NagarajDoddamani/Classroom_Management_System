@@ -124,6 +124,7 @@ export default function Dashboard() {
       "https://cdn-icons-png.flaticon.com/512/149/149071.png",
     name: user.name || "Unknown User",
     email: user.email || "No Email Found",
+    usn: user.usn || "No USN Found",  
   };
 
   return (
@@ -134,8 +135,9 @@ export default function Dashboard() {
         profileImage={sidebarData.profileImage}
         name={sidebarData.name}
         email={sidebarData.email}
-
+        usn={sidebarData.usn}
       />
+      
 
       {/* RIGHT CONTENT */}
       <div className="flex-1 px-10 pt-10 relative">
@@ -145,19 +147,20 @@ export default function Dashboard() {
 
         {/* Dynamic Class Cards */}
         <div className="grid grid-cols-2 gap-10 mt-6">
-          {subjects.length === 0 ? (
-            <p className="text-lg text-gray-700 col-span-2">
-              No classes available.
-            </p>
-          ) : (
-            subjects.map((sub) => (
-              <SubjectCard
-                key={sub._id}
-                title={sub.title}
-                teacher={sub.teacherName || sub.teacher}
-              />
-            ))
-          )}
+          {subjects.map((sub) => (
+            <SubjectCard
+              key={sub._id}
+              title={sub.subjectName || sub.title}
+              teacher={sub.teacherName || sub.teacher}
+              onClick={() => {
+                if (sub.type === "Teacher") {
+                  navigate(`/teacher/class/${sub._id}`);
+                } else {
+                  navigate(`/student/class/${sub._id}`);
+                }
+              }}
+            />
+          ))}
         </div>
 
         {/* Create Class Button */}

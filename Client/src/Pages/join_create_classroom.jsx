@@ -12,6 +12,7 @@ export default function ChooseClassroom() {
       user?.profileImage || "https://cdn-icons-png.flaticon.com/512/149/149071.png",
     name: user?.name || "Unknown User",
     email: user?.email || "No Email Found",
+    usn: user?.usn || "No USN Found",
   };
 
   return (
@@ -23,6 +24,7 @@ export default function ChooseClassroom() {
           profileImage={sidebarData.profileImage}
           name={sidebarData.name}
           email={sidebarData.email}
+          usn={sidebarData.usn}
         />
       </div>
 

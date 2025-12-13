@@ -12,6 +12,7 @@ export default function SignUp() {
 
   const [UserName, setUserName] = React.useState("");
   const [useremail, setUseremail] = React.useState("");
+  const [userusn, setUserusn] = React.useState("");
   const [userpassword, setUserpassword] = React.useState("");
   const [userConfirmpassword, setUserConfirmpassword] = React.useState("");
 
@@ -19,7 +20,7 @@ export default function SignUp() {
 
   const handelstep2 = async () => {
     // check all fields are filled
-    if (!UserName || !useremail || !userpassword || !userConfirmpassword) {
+    if (!UserName || !useremail || !userpassword || !userConfirmpassword || !userusn) {
       alert("Please fill in all fields.");
       return;
     }
@@ -51,7 +52,7 @@ export default function SignUp() {
 
       // 4. If not exists → go to face signup step
       navigate("/user/sign/face", {
-        state: { UserName, useremail, userpassword },
+        state: { UserName, useremail, userusn, userpassword },
       });
     } catch (err) {
       console.error(err);
@@ -110,6 +111,20 @@ export default function SignUp() {
                 className="w-full rounded-lg border border-[#c8d494] bg-[#f7ffd7] px-3 py-2 outline-none"
                 value={useremail}
                 onChange={(e) => setUseremail(e.target.value)}
+                autoComplete="off"
+                required
+              />
+            </div>
+
+            {/* user USN */}
+            <div>
+              <label className="block font-semibold mb-1">USN</label>
+              <input
+                type="text"
+                placeholder={userusn ? userusn : "Enter Your USN"}
+                className="w-full rounded-lg border border-[#c8d494] bg-[#f7ffd7] px-3 py-2 outline-none"
+                value={userusn}
+                onChange={(e) => setUserusn(e.target.value)}
                 autoComplete="off"
                 required
               />
