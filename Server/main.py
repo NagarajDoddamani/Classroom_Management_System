@@ -23,6 +23,11 @@ from fastapi import Body
 from bson import ObjectId
 import traceback
 from fastapi import Path
+from fastapi import Form
+from datetime import datetime
+import csv
+from fastapi.responses import StreamingResponse
+from io import StringIO
 
 # ---------------------------
 # ENV + DB SETUP
@@ -80,106 +85,305 @@ class UserFaceModel(BaseModel):
     usn: str
     face_id: List[List[float]]
 
-# GET /class/{class_id}  -> returns classroom meta (for teacher/student)
-@app.get("/class/{class_id}")
-async def get_classroom_for_frontend(class_id: str, authorization: str = Header(None)):
+# the each user face will load 
+def compare_face(enc1, enc2, tolerance=0.45):
+    enc1 = np.array(enc1)
+    enc2 = np.array(enc2)
+    dist = np.linalg.norm(enc1 - enc2)
+    return dist <= tolerance
+
+def today():
+    return datetime.utcnow().strftime("%Y-%m-%d")
+
+# for (per day) only today report generation present + absent all joined students 
+@app.get("/class/{class_id}/report/today")
+async def report_today(class_id: str):
+
+    today_date = today()
+
+    # fetch classroom
+    classroom = classrooms_col.find_one({"_id": ObjectId(class_id)})
+    if not classroom:
+        raise HTTPException(404, "Class not found")
+
+    # fetch attendance of today
+    records = list(attendance_col.find({
+        "class_id": ObjectId(class_id),
+        "date": today_date
+    }))
+
+    # prepare CSV stream
+    output = StringIO()
+    writer = csv.writer(output)
+
+    # HEADER (college info)
+    writer.writerow(["College Name: XYZ COLLEGE"])
+    # writer.writerow(["College Name: {classroom.get('college')}"])
+    writer.writerow([f"Department: {classroom.get('department')}"])
+    writer.writerow([f"Semester: {classroom.get('semester')}  Section: {classroom.get('section')}"])
+    writer.writerow([f"Subject: {classroom.get('subjectName')}"])
+    writer.writerow([f"Class Code: {classroom.get('classCode')}"])
+    writer.writerow([])
+
+    # TITLE
+    writer.writerow(["Today's Attendance"])
+    writer.writerow(["Sl.No", "USN", "Name", "Status", "Seen At"])
+
+    # data rows
+    for i, rec in enumerate(records, 1):
+        stu = users_col.find_one({"_id": rec["student_id"]})
+        status = "Present" if rec.get("present") else "Absent"
+        timestamp = rec.get("createdAt").strftime("%I:%M:%S %p")
+        writer.writerow([i, stu["usn"], stu["name"], status, timestamp])
+
+    output.seek(0)
+    return StreamingResponse(output, media_type="text/csv",
+                             headers={"Content-Disposition": "attachment; filename=today_attendance.csv"})
+
+# the attendance module
+@app.post("/attendance/face-session")
+async def attendance_face_session(
+    class_id: str = Form(...),
+    file: UploadFile = File(...),
+    authorization: str = Header(None),
+):
+    # -------- TOKEN CHECK --------
     if not authorization:
-        return {"success": False, "message": "Missing Authorization header"}
+        return {"success": False, "message": "Missing token"}
 
     try:
         scheme, token = authorization.split()
-        if scheme.lower() != "bearer":
-            return {"success": False, "message": "Bad auth scheme"}
         payload = decode_token(token)
-        email = payload.get("sub")
-        if not email:
-            return {"success": False, "message": "Invalid token"}
-    except Exception as e:
+        email = payload["sub"]
+    except:
         return {"success": False, "message": "Invalid token"}
 
+    teacher = users_col.find_one({"email": email})
+    if not teacher:
+        return {"success": False, "message": "Teacher not found"}
+
+    # -------- CLASSROOM CHECK --------
+    classroom = classrooms_col.find_one({"_id": ObjectId(class_id)})
+    if not classroom:
+        return {"success": False, "message": "Classroom not found"}
+
+    # -------- READ IMAGE --------
+    image_bytes = await file.read()
+    image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+    detected = face_recognition.face_encodings(np.array(image))
+
+    if len(detected) == 0:
+        return {"success": False, "message": "No faces detected"}
+
+    detected_faces = [np.array(d) for d in detected]
+
+    # -------- ONLY MATCH STUDENTS JOINED TO THIS CLASS --------
+    present = []
+    today_date = datetime.utcnow().strftime("%Y-%m-%d")
+
+    for sid_str in classroom.get("students", []):
+        sid = ObjectId(sid_str)
+        student = users_col.find_one({"_id": sid})
+
+        if not student:
+            continue
+
+        # Student encodings
+        stored_encs = student.get("face_id", {}).get("embeddings", [])
+        if not stored_encs:
+            continue
+
+        matched = False
+
+        for stu_enc in stored_encs:
+            stu_vec = np.array(stu_enc)
+
+            # Compare against each detected face
+            for det in detected_faces:
+                dist = np.linalg.norm(stu_vec - det)
+                if dist <= 0.45:
+                    matched = True
+                    break
+
+            if matched:
+                break
+
+        if matched:
+            present.append({
+                "student_id": str(sid),
+                "name": student["name"],
+                "usn": student["usn"]
+            })
+
+            # Update OR insert today's attendance record
+            attendance_col.update_one(
+                {
+                    "student_id": sid,
+                    "class_id": ObjectId(class_id),
+                    "date": today_date
+                },
+                {
+                    "$set": {
+                        "present": True,
+                        "updatedAt": datetime.utcnow()
+                    }
+                },
+                upsert=True
+            )
+
+    return {
+        "success": True,
+        "present": present,
+        "count": len(present)
+    }
+
+# for total semister report generation of attendance %
+@app.get("/class/{class_id}/report/summary")
+async def report_summary(class_id: str):
+
+    classroom = classrooms_col.find_one({"_id": ObjectId(class_id)})
+    if not classroom:
+        raise HTTPException(404, "Class not found")
+
+    student_ids = classroom.get("students", [])
+
+    output = StringIO()
+    writer = csv.writer(output)
+
+    # HEADER
+    writer.writerow(["College Name: XYZ COLLEGE"])
+    # writer.writerow(["College Name: {classroom.get('college')}"])
+    writer.writerow([f"Department: {classroom.get('department')}"])
+    writer.writerow([f"Semester: {classroom.get('semester')}  Section: {classroom.get('section')}"])
+    writer.writerow([f"Subject: {classroom.get('subjectName')}"])
+    writer.writerow([f"Class Code: {classroom.get('classCode')}"])
+    writer.writerow([])
+
+    writer.writerow(["Full Attendance Report"])
+    writer.writerow(["Sl.No", "USN", "Name", "Classes Taken", "Classes Attended", "Percentage"])
+
+    for i, sid in enumerate(student_ids, 1):
+        stu = users_col.find_one({"_id": ObjectId(sid)})
+        total = attendance_col.count_documents({"class_id": ObjectId(class_id)})
+        attended = attendance_col.count_documents({
+            "class_id": ObjectId(class_id),
+            "student_id": ObjectId(sid),
+            "present": True
+        })
+        percent = round((attended / total)*100) if total > 0 else 0
+
+        writer.writerow([i, stu["usn"], stu["name"], total, attended, percent])
+
+    output.seek(0)
+    return StreamingResponse(output, media_type="text/csv",
+                             headers={"Content-Disposition": "attachment; filename=summary_report.csv"})
+
+# GET /class/{class_id}  -> returns classroom meta (for teacher/student)
+# GET /class/{class_id} -> returns classroom meta + student attendance
+@app.get("/class/{class_id}")
+async def get_classroom(class_id: str, authorization: str = Header(None)):
+    if not authorization:
+        raise HTTPException(401, "Missing token")
+
+    # ---------------- TOKEN CHECK ----------------
     try:
-        # fetch classroom
-        classroom = classrooms_col.find_one({"_id": ObjectId(class_id)})
-        if not classroom:
-            return {"success": False, "message": "Classroom not found"}
+        scheme, token = authorization.split()
+        payload = decode_token(token)
+        email = payload["sub"]
+    except:
+        raise HTTPException(401, "Invalid token")
 
-        # convert ObjectId fields for safe JSON
-        classroom["_id"] = str(classroom["_id"])
-        # if students array contains ObjectIds convert them to strings
-        if isinstance(classroom.get("students"), list):
-            classroom["students"] = [str(s) for s in classroom["students"]]
+    # ---------------- USER FETCH ----------------
+    user = users_col.find_one({"email": email})
+    if not user:
+        raise HTTPException(404, "User not found")
 
-        # include notice as-is (if stored)
-        # We keep the same shape your frontend uses: classroom.minAttendance etc.
-        return {"success": True, "classroom": classroom}
+    # ---------------- CLASSROOM FETCH ----------------
+    classroom = classrooms_col.find_one({"_id": ObjectId(class_id)})
+    if not classroom:
+        raise HTTPException(404, "Classroom not found")
 
-    except Exception:
-        import traceback
-        traceback.print_exc()
-        return {"success": False, "message": "Internal server error"}
+    # Convert _id for frontend
+    classroom["_id"] = str(classroom["_id"])
+
+    # ---------------- ATTENDANCE CALCULATION ----------------
+    total_sessions = attendance_col.count_documents({
+        "class_id": ObjectId(class_id)
+    })
+
+    present_sessions = attendance_col.count_documents({
+        "class_id": ObjectId(class_id),
+        "student_id": user["_id"],
+        "present": True
+    })
+
+    percentage = 0
+    if total_sessions > 0:
+        percentage = round((present_sessions / total_sessions) * 100)
+
+    return {
+        "success": True,
+        "classroom": classroom,
+        "attendance": {
+            "percentage": percentage,
+            "present_days": present_sessions,
+            "total_days": total_sessions
+        }
+    }
 
 # GET /class/{class_id}/attendance/today -> returns attendance array for today
+# @app.get("/attendance/today/{class_id}")
 @app.get("/class/{class_id}/attendance/today")
-async def get_todays_attendance(class_id: str, authorization: str = Header(None)):
+async def get_today_attendance(class_id: str, authorization: str = Header(None)):
+    
+    # Optional: auth check
     if not authorization:
-        return {"success": False, "message": "Missing Authorization header"}
+        return {"success": False, "message": "Missing token"}
 
-    try:
-        scheme, token = authorization.split()
-        if scheme.lower() != "bearer":
-            return {"success": False, "message": "Bad auth scheme"}
-        payload = decode_token(token)
-        email = payload.get("sub")
-        if not email:
-            return {"success": False, "message": "Invalid token"}
-    except Exception as e:
-        return {"success": False, "message": "Invalid token"}
+    today_date = today()
 
-    try:
-        # normalize date key (we expect attendance sessions to store "date": "YYYY-MM-DD")
-        today_key = _iso_date(datetime.utcnow())
+    classroom = classrooms_col.find_one({"_id": ObjectId(class_id)})
+    if not classroom:
+        return {"success": False, "message": "Classroom not found"}
 
-        # find attendance doc for class_id + date
-        att_doc = attendance_col.find_one({
+    student_ids = classroom.get("students", [])
+
+    result = []
+
+    for sid in student_ids:
+        student = users_col.find_one({"_id": ObjectId(sid)})
+        if not student:
+            continue
+
+        # Fetch attendance record for today
+        rec = attendance_col.find_one({
             "class_id": ObjectId(class_id),
-            "date": today_key
+            "student_id": ObjectId(sid),
+            "date": today_date
         })
 
-        if not att_doc:
-            # not found → return empty attendance array
-            return {"success": True, "attendance": []}
+        if rec:
+            status = "present"
+            timestamp = rec.get("timestamp") or rec.get("createdAt")
+        else:
+            status = "absent"
+            timestamp = None
 
-        # expected att_doc shape:
-        # {
-        #   _id, class_id, date, present: [{student_id:ObjectId, usn, name, timestamp}], absent: [...]
-        # }
-        # We'll merge present + absent into one array with status flag for frontend convenience.
-        attendance_list = []
+        result.append({
+            "student_id": str(sid),
+            "name": student["name"],
+            "usn": student["usn"],
+            "status": status,
+            "timestamp": timestamp
+        })
 
-        for p in att_doc.get("present", []):
-            attendance_list.append({
-                "student_id": str(p.get("student_id")) if p.get("student_id") else None,
-                "usn": p.get("usn"),
-                "name": p.get("name"),
-                "status": "present",
-                "timestamp": p.get("timestamp")  # should be ISO string or datetime
-            })
+    return {
+        "success": True,
+        "attendance": result,
+        "count_present": sum(1 for r in result if r["status"] == "present"),
+        "count_total": len(result)
+    }
 
-        for a in att_doc.get("absent", []):
-            attendance_list.append({
-                "student_id": str(a.get("student_id")) if a.get("student_id") else None,
-                "usn": a.get("usn"),
-                "name": a.get("name"),
-                "status": "absent",
-                "timestamp": a.get("timestamp")
-            })
-
-        return {"success": True, "attendance": attendance_list}
-
-    except Exception:
-        import traceback
-        traceback.print_exc()
-        return {"success": False, "message": "Internal server error"}
 
 # teacre post an notice for class (teacher)
 # POST /class/{class_id}/notice -> teacher publishes a notice to classroom
@@ -586,41 +790,41 @@ async def join_classroom(data: JoinClassRequest, authorization: str = Header(Non
         traceback.print_exc()
         return {"success": False, "message": "Internal server error"}
     
-# the user as student, classroom data code
-@app.get("/class/{class_id}")
-async def get_classroom(class_id: str, authorization: str = Header(None)):
-    if not authorization:
-        raise HTTPException(401, "Missing token")
+# # the user as student, classroom data code
+# @app.get("/class/{class_id}")
+# async def get_classroom(class_id: str, authorization: str = Header(None)):
+#     if not authorization:
+#         raise HTTPException(401, "Missing token")
 
-    try:
-        scheme, token = authorization.split()
-        payload = decode_token(token)
-        email = payload["sub"]
-    except:
-        raise HTTPException(401, "Invalid token")
+#     try:
+#         scheme, token = authorization.split()
+#         payload = decode_token(token)
+#         email = payload["sub"]
+#     except:
+#         raise HTTPException(401, "Invalid token")
 
-    user = users_col.find_one({"email": email})
-    if not user:
-        raise HTTPException(404, "User not found")
+#     user = users_col.find_one({"email": email})
+#     if not user:
+#         raise HTTPException(404, "User not found")
 
-    classroom = classrooms_col.find_one({"_id": ObjectId(class_id)})
-    if not classroom:
-        raise HTTPException(404, "Classroom not found")
+#     classroom = classrooms_col.find_one({"_id": ObjectId(class_id)})
+#     if not classroom:
+#         raise HTTPException(404, "Classroom not found")
 
-    # convert id
-    classroom["_id"] = str(classroom["_id"])
+#     # convert id
+#     classroom["_id"] = str(classroom["_id"])
 
-    # example: compute student's attendance
-    attendance = attendance_col.find_one({
-        "student_id": user["_id"],
-        "class_id": ObjectId(class_id)
-    }) or {"percentage": 0}
+#     # example: compute student's attendance
+#     attendance = attendance_col.find_one({
+#         "student_id": user["_id"],
+#         "class_id": ObjectId(class_id)
+#     }) or {"percentage": 0}
 
-    return {
-        "success": True,
-        "classroom": classroom,
-        "attendance": attendance
-    }
+#     return {
+#         "success": True,
+#         "classroom": classroom,
+#         "attendance": attendance
+#     }
 
 # ---------------------------
 # dev server entrypoint
