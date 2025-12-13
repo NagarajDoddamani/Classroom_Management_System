@@ -57,42 +57,75 @@ export default function TeacherDashboard() {
 
   const fetchData = useCallback(async () => {
     setLoading(true);
+
     try {
       if (!token) {
         navigate("/", { replace: true });
         return;
       }
 
-      // fetch classroom meta
+      // ---------------- FETCH CLASS META ----------------
       const clsRes = await fetch(`${API_BASE}/class/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${token}` }
       });
 
-      if (!clsRes.ok) {
-        console.error("Failed to load class meta", await clsRes.text());
-        setClassData(null);
-      } else {
+      if (clsRes.ok) {
         const clsJson = await clsRes.json();
+        console.log("CLASS META:", clsJson);
+
         if (clsJson.success) setClassData(clsJson.classroom);
         else setClassData(null);
+      } else {
+        console.error("Failed class meta:", await clsRes.text());
+        setClassData(null);
       }
 
-      // fetch today's attendance
+      // ---------------- FETCH TODAY ATTENDANCE ----------------
       const attRes = await fetch(`${API_BASE}/class/${id}/attendance/today`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${token}` }
       });
 
-      if (!attRes.ok) {
-        console.warn("No attendance or failed to load today's attendance");
-        setAttendance([]);
-      } else {
+      if (attRes.ok) {
         const attJson = await attRes.json();
+        console.log("TODAY ATTENDANCE:", attJson);
+
+        // FIX: backend returns `attendance`, not `present`
         if (attJson.success && Array.isArray(attJson.attendance)) {
-          setAttendance(attJson.attendance);
+          const formatted = attJson.attendance.map((stu) => ({
+            student_id: stu.student_id,
+            name: stu.name,
+            usn: stu.usn,
+            status: "present",
+            timestamp: stu.timestamp || null,
+          }));
+
+          setAttendance(formatted);
         } else {
           setAttendance([]);
         }
+      } else {
+        console.warn("Attendance fetch error:", await attRes.text());
+        setAttendance([]);
       }
+
+      // -------------- FETCH JOINED STUDENT SUMMARY --------------
+      const sumRes = await fetch(`${API_BASE}/class/${id}/attendance/summary`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (sumRes.ok) {
+        const sumJson = await sumRes.json();
+        console.log("SUMMARY:", sumJson);
+
+        if (sumJson.success && Array.isArray(sumJson.summary)) {
+          setSummary(sumJson.summary);
+        } else {
+          setSummary([]);
+        }
+      } else {
+        setSummary([]);
+      }
+
     } catch (err) {
       console.error("Error fetching dashboard data:", err);
       setClassData(null);
@@ -100,6 +133,7 @@ export default function TeacherDashboard() {
     } finally {
       setLoading(false);
     }
+
   }, [id, token, navigate]);
 
   useEffect(() => {
@@ -143,6 +177,8 @@ export default function TeacherDashboard() {
   const totalRoster = (classData?.students && classData.students.length) || (attendance.length || 0);
   const percent = totalRoster === 0 ? 0 : Math.round((presentCount / totalRoster) * 100);
   const eligible = classData ? percent >= (classData.minAttendance || 0) : false;
+
+  const [summary, setSummary] = useState([]);
 
   if (loading) {
     return <div className="flex items-center justify-center h-screen text-lg">Loading Teacher Dashboard...</div>;
@@ -250,6 +286,51 @@ export default function TeacherDashboard() {
                 {eligible ? "Class is above minimum attendance" : "Class below minimum attendance"}
               </p>
             </div>
+          </div>
+        </div>
+        
+        {/* Joined Students Attendance Summary */}
+        <div className="bg-white p-6 rounded-3xl mt-8 max-w-4xl shadow-xl">
+          <h2 className="text-2xl font-bold mb-4">Joined Students Attendance Summary</h2>
+
+          <div className="overflow-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="text-left bg-gray-100">
+                  <th className="p-2">USN</th>
+                  <th className="p-2">Name</th>
+                  <th className="p-2">Percentage</th>
+                  <th className="p-2">Status</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {summary.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="p-4 text-gray-600">
+                      No summary available
+                    </td>
+                  </tr>
+                ) : (
+                  summary.map((stu, i) => (
+                    <tr key={i}>
+                      <td className="p-2 font-semibold">{stu.usn}</td>
+                      <td className="p-2">{stu.name}</td>
+                      <td className="p-2 font-semibold">{stu.percentage}%</td>
+                      <td className="p-2">
+                        <span
+                          className={`font-semibold ${
+                            stu.eligible ? "text-green-600" : "text-red-600"
+                          }`}
+                        >
+                          {stu.eligible ? "Eligible" : "Not Eligible"}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
 
