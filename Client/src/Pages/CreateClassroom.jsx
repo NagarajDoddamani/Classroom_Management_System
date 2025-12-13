@@ -15,6 +15,9 @@ export default function CreateClassroom() {
   const [minAttendance, setMinAttendance] = useState("");
   const [createdClass, setCreatedClass] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [collegeName, setCollegeName] = useState("");
+  const [courseCode, setCourseCode] = useState("");
+
 
   // safe API base (fall back to localhost)
   const API_BASE_SAFE = (import.meta.env.VITE_API_BASE && import.meta.env.VITE_API_BASE.trim())
@@ -24,7 +27,7 @@ export default function CreateClassroom() {
   const url = `${API_BASE_SAFE}/class/create`;
 
   const handleCreate = async () => {
-    if (!subject || !department || !section || !semester) {
+    if (!subject || !department || !section || !semester || !minAttendance || !courseCode || !collegeName ) {
       alert("Please fill all required fields!");
       return;
     }
@@ -168,17 +171,7 @@ export default function CreateClassroom() {
           <div className="bg-white rounded-3xl p-6 md:p-10 shadow-xl w-full max-w-3xl">
             <h1 className="text-3xl font-bold text-center mb-8">Create Classroom</h1>
 
-            {/* Subject */}
-            <label className="font-semibold block mb-1">Subject Name</label>
-            <input
-              className="w-full p-3 rounded-xl bg-[#f7ffcf] border mb-4"
-              placeholder="Enter Subject Name"
-              value={subject}
-              onChange={(e) => setSubject(e.target.value)}
-              aria-label="Subject name"
-            />
-
-            {/* Teacher */}
+            {/* Teacher name */}
             <label className="font-semibold block mb-1">Teacher Name</label>
             <input
               className="w-full p-3 rounded-xl bg-[#f7ffcf] border mb-4"
@@ -189,6 +182,36 @@ export default function CreateClassroom() {
                 if (!teacherName && user?.name) setTeacherName(user.name);
               }}
               aria-label="Teacher name"
+            />
+
+            {/* Subject name*/}
+            <label className="font-semibold block mb-1">Subject Name</label>
+            <input
+              className="w-full p-3 rounded-xl bg-[#f7ffcf] border mb-4"
+              placeholder="Enter Subject Name"
+              value={subject}
+              onChange={(e) => setSubject(e.target.value)}
+              aria-label="Subject name"
+            />
+
+            {/* Course Code */}
+            <label className="font-semibold block mb-1">Course Code</label>
+            <input
+              className="w-full p-3 rounded-xl bg-[#f7ffcf] border mb-4"
+              placeholder="Enter Course Code (Ex: 22CS33)"
+              value={courseCode}
+              onChange={(e) => setCourseCode(e.target.value)}
+              aria-label="Course Code"
+            />
+
+            {/* College Name */}
+            <label className="font-semibold block mb-1">College Name</label>
+            <input
+              className="w-full p-3 rounded-xl bg-[#f7ffcf] border mb-4"
+              placeholder="Enter College Name"
+              value={collegeName}
+              onChange={(e) => setCollegeName(e.target.value)}
+              aria-label="College name"
             />
 
             {/* Department */}
