@@ -1,13 +1,12 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+clear
 import { FaInstagram, FaLinkedin, FaGlobe } from 'react-icons/fa';
 
 const Footer = () => {
-  const navigate = useNavigate();
 
-  const handleNavigation = (path) => {
-    navigate(path);
-  };
+  // const handleNavigation = (path) => {
+  //   navigate(path);
+  // };
 
   return (
     <footer className="bg-[#04000D] text-white py-8">
