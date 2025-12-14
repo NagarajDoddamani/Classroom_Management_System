@@ -1,4 +1,7 @@
 // Client/src/context/AuthProvider.jsx
+/* eslint-disable react-refresh/only-export-components */
+/* eslint-disable react-hooks/preserve-manual-memoization */
+/* eslint-disable react-hooks/set-state-in-effect */
 import React, { createContext, useState, useEffect, useCallback, useContext } from "react";
 import { API_BASE, authFetch } from "../utils/api";
 
@@ -7,7 +10,7 @@ export const AuthContext = createContext();
 export function AuthProvider({ children }) {
   const [token, setToken] = useState(null);       // in-memory token
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   // login: store token in memory (or sessionStorage if you want survive reload)
   const login = async (tokenValue) => {
@@ -54,12 +57,11 @@ export function AuthProvider({ children }) {
     let interval = null;
     // if token present fetch immediately
     if (token) {
+      setLoading(true);
       fetchMe();
       interval = setInterval(() => {
         fetchMe();
       }, 30000); // 30s
-    } else {
-      setLoading(false);
     }
     return () => {
       if (interval) clearInterval(interval);
@@ -71,8 +73,9 @@ export function AuthProvider({ children }) {
     const saved = sessionStorage.getItem("token");
     if (saved && !token) {
       setToken(saved);
+      fetchMe(saved);
     }
-  }, []);
+  }, [fetchMe, token]); // remove token from deps to avoid loop
 
   // when token updates persist
   useEffect(() => {
