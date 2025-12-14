@@ -466,20 +466,21 @@ class LoginRequest(BaseModel):
     email: str
     password: str
 
+# for joining the classroom
+class JoinClassRequest(BaseModel):
+    classCode: str
+
 # for createing the classroom
 class CreateClassRequest(BaseModel):
     subjectName: str
     teacherName: str
     department: str
     section: str
-    semester: str  # accept string here, we'll coerce
-    minAttendance: str  # accept string here, we'll coerce
+    semester: int
+    minAttendance: int
     collegeName: str   # needed for report genration
     courseCode: str         # report gen
 
-# for joining the classroom
-class JoinClassRequest(BaseModel):
-    classCode: str
 
 # the uniq classroom code generating code
 def generate_class_code(length=8):
@@ -516,19 +517,9 @@ async def create_classroom(
         if not user:
             return {"success": False, "message": "User not found"}
 
-        # coerce numeric fields safely
-        try:
-            min_att = int(data.minAttendance)
-        except Exception:
-            try:
-                min_att = int(float(data.minAttendance))
-            except Exception:
-                min_att = 0
-
-        try:
-            sem = int(data.semester)
-        except Exception:
-            sem = None
+        # direct Int 
+        min_att = data.minAttendance
+        sem = data.semester
 
         # generate unique code
         class_code = generate_class_code()
