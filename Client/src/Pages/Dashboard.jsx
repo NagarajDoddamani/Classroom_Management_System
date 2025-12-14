@@ -154,9 +154,9 @@ export default function Dashboard() {
               teacher={sub.teacherName || sub.teacher}
               onClick={() => {
                 if (sub.type === "Teacher") {
-                  navigate(`/teacher/class/${sub._id}`);
+                  navigate(`/user/dashboard/teacher/class/${sub._id}`);
                 } else {
-                  navigate(`/student/class/${sub._id}`);
+                  navigate(`/user/dashboard/student/class/${sub._id}`);
                 }
               }}
             />
