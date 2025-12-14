@@ -1,7 +1,7 @@
-import React, { useRef, useEffect, useState } from "react";
+import React, { useRef, useEffect, useState, useMemo } from "react";
 
 export default function Tabs({ activeTab, setActiveTab }) {
-  const tabs = ["All", "Student", "Teacher"];
+  const tabs = useMemo(() => ["All", "Student", "Teacher"], []);
   const tabRefs = useRef([]);
   const [sliderStyle, setSliderStyle] = useState({ left: 0, width: 0 });
 
@@ -17,7 +17,7 @@ export default function Tabs({ activeTab, setActiveTab }) {
         width: rect.width,
       });
     }
-  }, [activeTab]);
+  }, [activeTab, tabs]);
 
   return (
     <div className="relative flex gap-4 justify-center mb-10 bg-blue-200 p-2 rounded-full">
