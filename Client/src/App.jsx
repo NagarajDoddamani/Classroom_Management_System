@@ -19,13 +19,13 @@ export default function App() {
       <Route path="/user/sign" element={<SignUp />} />
       <Route path="/user/sign/face" element={<SignWithFace />} />
       <Route path="/user/dashboard" element={<Dashboard />} />
-      <Route path="/user/class/join-create" element={<JoinCreateClassroom />} />
-      <Route path="/user/class/createClassroom" element={<CreateClassroom />} />
-      <Route path="/user/class/joinClassroom" element={<JoinClassroom />} />
+      <Route path="/user/dashboard/class/join-create" element={<JoinCreateClassroom />} />
+      <Route path="/user/dashboard/class/createClassroom" element={<CreateClassroom />} />
+      <Route path="/user/dashboard/class/joinClassroom" element={<JoinClassroom />} />
       
-      <Route path="/teacher/class/:id" element={<TeacherDashboard />} />
-      <Route path="/student/class/:id" element={<StudentDashboard />} />
-      <Route path="/class/:id/face-session" element={<FaceSession />} />
+      <Route path="/user/dashboard/teacher/class/:id" element={<TeacherDashboard />} />
+      <Route path="/user/dashboard/student/class/:id" element={<StudentDashboard />} />
+      <Route path="/user/dashboard/teacher/class/:id/face-session" element={<FaceSession />} />
     </Routes>
   );
 }
