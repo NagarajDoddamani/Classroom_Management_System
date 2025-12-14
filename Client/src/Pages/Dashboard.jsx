@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import Sidebar from "../Components/Dasboard/Sidebar.jsx";
 import Tabs from "../Components/Dasboard/Tabs.jsx";
@@ -18,7 +18,7 @@ export default function Dashboard() {
   // --------------------------------------------------
   // FUNCTION: Fetch user via token -> /me endpoint
   // --------------------------------------------------
-  const fetchUser = async () => {
+  const fetchUser = useCallback(async () => {
     const token = sessionStorage.getItem("token");
     if (!token) {
       navigate("/", { replace: true });
@@ -41,12 +41,12 @@ export default function Dashboard() {
     } catch (err) {
       console.error("Error fetching user:", err);
     }
-  };
+  }, [navigate]);
 
   // --------------------------------------------------
   // FUNCTION: Fetch user's classrooms -> /classes/my
   // --------------------------------------------------
-  const fetchClasses = async () => {
+  const fetchClasses = useCallback(async () => {
     const token = sessionStorage.getItem("token");
     if (!token) return;
 
@@ -63,7 +63,7 @@ export default function Dashboard() {
     } catch (err) {
       console.error("Error fetching classes:", err);
     }
-  };
+  }, []);
 
   // --------------------------------------------------
   // ON MOUNT → Fetch user + classes + start interval
@@ -84,7 +84,7 @@ export default function Dashboard() {
     }, 30000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [fetchUser, fetchClasses]);
 
   // --------------------------------------------------
   // Loading State

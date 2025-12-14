@@ -35,7 +35,7 @@ export default function ChooseClassroom() {
 
           {/* Create Classroom */}
           <div
-            onClick={() => navigate("/user/class/createClassroom")}
+            onClick={() => navigate("/user/dashboard/class/createClassroom")}
             className="cursor-pointer bg-white rounded-3xl shadow-xl p-8 md:p-10 
                       hover:scale-105 transition transform"
           >
@@ -49,7 +49,7 @@ export default function ChooseClassroom() {
 
           {/* Join Classroom */}
           <div
-            onClick={() => navigate("/user/class/joinClassroom")}
+            onClick={() => navigate("/user/dashboard/class/joinClassroom")}
             className="cursor-pointer bg-white rounded-3xl shadow-xl p-8 md:p-10 
                       hover:scale-105 transition transform"
           >

@@ -20,24 +20,6 @@ export default function SignWithFace() {
 
   const [cameraReady, setCameraReady] = useState(false);
 
-  // -----------------------
-  // START CAMERA ON MOUNT
-  // -----------------------
-  useEffect(() => {
-    let mounted = true;
-
-    const init = async () => {
-      if (mounted) await startCamera();
-    };
-
-    init();
-
-    return () => {
-      mounted = false;
-      stopCamera();
-    };
-  }, []);
-
   const startCamera = async () => {
     const container = document.getElementById("video-container");
 
@@ -56,7 +38,6 @@ export default function SignWithFace() {
       console.log("Camera ready");
     };
   };
-
 
   // -----------------------
   // STOP CAMERA PROPERLY
@@ -88,6 +69,24 @@ export default function SignWithFace() {
       console.error("Error stopping camera:", err);
     }
   };
+
+  // -----------------------
+  // START CAMERA ON MOUNT
+  // -----------------------
+  useEffect(() => {
+    let mounted = true;
+
+    const init = async () => {
+      if (mounted) await startCamera();
+    };
+
+    init();
+
+    return () => {
+      mounted = false;
+      stopCamera();
+    };
+  }, []);
 
   const handelCancelregistration = () => {
     stopCamera();

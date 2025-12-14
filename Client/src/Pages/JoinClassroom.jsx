@@ -86,7 +86,7 @@ export default function JoinClassroom() {
     profileImage: user?.profileImage || "https://cdn-icons-png.flaticon.com/512/149/149071.png",
     name: user?.name || "Unknown User",
     email: user?.email || "No Email Found",
-    usn: user.usn || "No USN Found",
+    usn: user?.usn || "No USN Found",
   };
 
   return (

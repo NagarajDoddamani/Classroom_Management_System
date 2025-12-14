@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Sidebar from "../Components/Dasboard/Sidebar";
 import { useAuth } from "../context/AuthProvider";
@@ -17,7 +17,7 @@ export default function StudentDashboard() {
 
 
   // FETCH CLASSROOM + ATTENDANCE FROM BACKEND
-  const fetchClassData = async () => {
+  const fetchClassData = useCallback(async () => {
     setLoading(true);
     try {
       const API_BASE_SAFE = (import.meta.env.VITE_API_BASE && import.meta.env.VITE_API_BASE.trim())
@@ -86,12 +86,15 @@ export default function StudentDashboard() {
       setClassData(null);
       setLoading(false);
     }
-  };
+  }, [id, token]);
 
 
   useEffect(() => {
-    fetchClassData();
-  }, []);
+    const loadData = async () => {
+      await fetchClassData();
+    };
+    loadData();
+  }, [fetchClassData]);
 
   if (loading) return <div className="p-10 text-xl">Loading Dashboard…</div>;
 
@@ -127,6 +130,8 @@ export default function StudentDashboard() {
         <ClassHeader 
           subjectName={classData.subjectName}
           teacherName={classData.teacherName}
+          collegeName={classData.collegeName}
+          subjectCode={classData.subjectCode}
         />
 
         {/* Back button */}

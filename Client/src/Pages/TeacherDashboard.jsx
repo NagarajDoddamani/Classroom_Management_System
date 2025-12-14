@@ -203,6 +203,8 @@ export default function TeacherDashboard() {
         <ClassHeader 
           subjectName={classData.subjectName}
           teacherName={classData.teacherName}
+          collegeName={classData.collegeName}
+          subjectCode={classData.courseCode}
         />
 
         {/* Back */}
@@ -381,7 +383,7 @@ export default function TeacherDashboard() {
           </button> */}
 
           <button
-            onClick={() => navigate(`/class/${id}/face-session`)}
+            onClick={() => navigate(`/user/dashboard/teacher/class/${id}/face-session`)}
             className="bg-white p-6 rounded-xl shadow-md text-6xl"
             title="Open camera session"
           >
