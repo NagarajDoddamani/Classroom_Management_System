@@ -2,10 +2,6 @@ fastapi
 uvicorn
 pymongo
 python-dotenv
-dnspython
-face-recognition==1.3.0
-pillow
+Pillow
 numpy
-pyjwt
-python-multipart
-bcrypt
+face-recognition==1.3.0
