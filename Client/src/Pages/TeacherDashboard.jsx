@@ -64,7 +64,7 @@ export default function TeacherDashboard() {
         return;
       }
 
-      // ---------------- FETCH CLASS META ----------------
+      // ---------------- FETCH CLASS META ----------------DONE CHECK
       const clsRes = await fetch(`${API_BASE}/class/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -80,7 +80,7 @@ export default function TeacherDashboard() {
         setClassData(null);
       }
 
-      // ---------------- FETCH TODAY ATTENDANCE ----------------
+      // ---------------- FETCH TODAY ATTENDANCE ----------------DONE CHECK
       const attRes = await fetch(`${API_BASE}/class/${id}/attendance/today`, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -95,7 +95,7 @@ export default function TeacherDashboard() {
             student_id: stu.student_id,
             name: stu.name,
             usn: stu.usn,
-            status: "present",
+            status: stu.status,              // "present" or "absent" from backend
             timestamp: stu.timestamp || null,
           }));
 
@@ -295,6 +295,17 @@ export default function TeacherDashboard() {
         <div className="bg-white p-6 rounded-3xl mt-8 max-w-4xl shadow-xl">
           <h2 className="text-2xl font-bold mb-4">Joined Students Attendance Summary</h2>
 
+          {/* report button */}
+          <div className="flex gap-4 mt-6 mb-4">
+           <a
+              href={`${API_BASE}/class/${id}/report/summary`}
+              target="_blank"
+              className="px-4 py-2 bg-blue-200 rounded-xl hover:bg-blue-300"
+            >
+              Download Full Summary
+            </a>
+          </div>
+
           <div className="overflow-auto">
             <table className="w-full">
               <thead>
@@ -339,6 +350,27 @@ export default function TeacherDashboard() {
         {/* Today's attendance list */}
         <div className="bg-[#f3ffd4] p-6 rounded-2xl mt-8 max-w-3xl shadow-md">
           <h2 className="text-xl font-bold mb-3">Today's Attendance</h2>
+          {/* report button  present + absent */}
+          <div className="flex gap-4 mt-6 mb-4">
+            <a
+              href={`${API_BASE}/class/${id}/present/report/today`}
+              target="_blank"
+              className="px-4 py-2 bg-green-200 rounded-xl hover:bg-green-300"
+            >
+              Download Today Report
+            </a>
+          </div>
+
+          {/* report button only present*/}
+          <div className="flex gap-4 mt-6 mb-4">
+            <a
+              href={`${API_BASE}/class/${id}/report/today`}
+              target="_blank"
+              className="px-4 py-2 bg-green-200 rounded-xl hover:bg-green-300"
+            >
+              Today Present Report
+            </a>
+          </div>
 
           <div className="overflow-auto">
             <table className="w-full">
@@ -374,13 +406,6 @@ export default function TeacherDashboard() {
 
         {/* Floating action buttons: Report + Camera */}
         <div className="fixed right-6 bottom-6 flex gap-4">
-          {/* <button
-            onClick={() => navigate(`/class/${id}/report`)}
-            className="bg-white p-4 rounded-xl shadow-md"
-            title="Report"
-          >
-            📋
-          </button> */}
 
           <button
             onClick={() => navigate(`/user/dashboard/teacher/class/${id}/face-session`)}

@@ -83,7 +83,7 @@ function LoginPage() {
             </h1>
 
             <ul className="space-y-4 text-xl">
-              {["Loram", "Loram", "Loram", "Loram"].map((item, idx) => (
+              {["Easy Classroom Management", "Generate Detailed Attendance Reports", "Teacher & student role management", "Fast attendance marking with one tap"].map((item, idx) => (
                 <li key={idx} className="flex items-center gap-3">
                   <span className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-lg">
                     ✓
