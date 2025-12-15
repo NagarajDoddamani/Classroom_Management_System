@@ -116,7 +116,7 @@ export default function FaceSession() {
 
       <button
         className="mt-6 text-xl underline"
-        onClick={() => navigate(`/teacher/class/${id}`)}
+        onClick={() => navigate(`/user/dashboard/teacher/class/${id}`)}
       >
         ← Back
       </button>
