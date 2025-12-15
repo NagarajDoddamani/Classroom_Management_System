@@ -156,7 +156,7 @@ function LoginPage() {
             <p className="text-xs text-center mt-4">
               Don't Have Account{" "}
               <Link to="/user/sign" className="text-red-600 font-semibold">
-                Sing up...
+                Sign up...
               </Link>
             </p>
           </div>
