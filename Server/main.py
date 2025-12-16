@@ -924,9 +924,5 @@ async def attendance_summary(class_id: str, authorization: str = Header(None)):
 # dev server entrypoint
 # ---------------------------
 if __name__ == "__main__":
-
-    classroom = classrooms_col.find_one({"_id": ObjectId(class_id)})
-    student_ids = classroom.get("students", [])
-
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
