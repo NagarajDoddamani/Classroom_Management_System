@@ -28,9 +28,10 @@ export default function ChooseClassroom() {
         />
       </div>
 
+      
       {/* RIGHT CONTENT */}
       <div className="flex-1 flex justify-center items-start">
-
+          
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 md:gap-10 w-full max-w-4xl">
 
           {/* Create Classroom */}

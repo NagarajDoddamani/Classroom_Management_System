@@ -54,7 +54,7 @@ export default function FaceSession() {
 
     if (data.success) {
       alert(`Attendance updated! Present students: ${data.present.length}`);
-      navigate(`/teacher/class/${id}`);
+      navigate(`/user/dashboard/teacher/class/${id}`);
     } else {
       alert(data.message || "Error processing attendance.");
     }

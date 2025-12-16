@@ -208,7 +208,11 @@ export default function TeacherDashboard() {
         />
 
         {/* Back */}
-        <button className="text-3xl mt-6 ml-2" onClick={() => navigate("/user/dashboard")}>←</button>
+        <button 
+          className="text-3xl mt-6 ml-2" onClick={() => navigate("/user/dashboard")}
+        >
+          ←
+        </button>
 
         {/* NOTICE & Attendance row */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
